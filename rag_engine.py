@@ -13,6 +13,8 @@ from rich.console import Console
 
 from utils import extract_pdf_content, create_chunks_with_metadata, format_source_reference
 
+import asyncio
+
 # Get logger
 logger = logging.getLogger("rag_app.engine")
 
@@ -27,6 +29,14 @@ class RAGEngine:
             api_key: Google API key
             model_name: Name of the Gemini model to use
         """
+
+        # Ensure an event loop exists for Streamlit ScriptRunner thread
+        try:
+            asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         logger.info(f"Initializing RAG Engine with model: {model_name}")
         self.api_key = api_key
         self.model_name = model_name
