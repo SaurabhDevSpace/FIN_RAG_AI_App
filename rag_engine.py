@@ -227,42 +227,28 @@ class RAGEngine:
         for source in sources:
             vector_store = self.vector_stores[source]
             logger.debug(f"Querying vector store: {source}")
-            
-            # Get more documents initially for better filtering
-            logger.debug(f"Performing similarity search with k=15 for query: '{query}'")
-            docs = vector_store.similarity_search(query, k=15)
-            logger.debug(f"Retrieved {len(docs)} documents from {source}")
-            
-            # Score documents based on relevance to the query
-            logger.debug("Scoring documents based on relevance")
+
+            # ✅ Use FAISS similarity search with scores
+            logger.debug(f"Performing similarity search WITH SCORE for query: '{query}'")
+            results = vector_store.similarity_search_with_score(query, k=15)
+            logger.debug(f"Retrieved {len(results)} (doc, score) pairs from {source}")
+
             scored_docs = []
-            for doc_idx, doc in enumerate(docs):
-                # Simple relevance score based on term overlap
-                query_terms = set(query.lower().split())
-                content_terms = set(doc.page_content.lower().split())
-                overlap = len(query_terms.intersection(content_terms))
-                score = overlap / len(query_terms) if query_terms else 0
-                
-                # Boost score if document contains section headers relevant to query
-                section_headers = doc.metadata.get("section_headers", "") + doc.metadata.get("chunk_sections", "")
-                if section_headers:
-                    for term in query_terms:
-                        if term in section_headers.lower():
-                            score += 0.2  # Boost for relevant sections
-                            logger.debug(f"Boosted score for doc {doc_idx} due to relevant section header: '{term}'")
-                
-                logger.debug(f"Document {doc_idx} from {source} scored: {score}")
+            for doc_idx, (doc, score) in enumerate(results):
+                # store FAISS similarity score in metadata
+                doc.metadata["score"] = str(round(score*100, 2)) + " %"
                 scored_docs.append((doc, score))
-            
-            # Sort by score and take top results
+                logger.debug(f"Doc {doc_idx} from {source} FAISS score: {score}")
+
+            # Sort and take top 10
             scored_docs.sort(key=lambda x: x[1], reverse=True)
             top_docs = [doc for doc, _ in scored_docs[:10]]
-            logger.debug(f"Selected top {len(top_docs)} documents from {source}")
-            
+
             all_docs.extend(top_docs)
-            
+
             for doc in top_docs:
-                source_ref = format_source_reference(doc.metadata)
+                # ✅ now includes score in reference
+                source_ref = format_source_reference(doc.metadata, include_score=True)
                 source_info.append(source_ref)
                 logger.debug(f"Added source reference: {source_ref}")
         

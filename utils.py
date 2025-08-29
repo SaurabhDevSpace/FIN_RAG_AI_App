@@ -158,18 +158,13 @@ def get_pdf_files(directory: str) -> List[str]:
             pdf_files.append(os.path.join(directory, file))
     return pdf_files
 
-def format_source_reference(metadata: Dict[str, any]) -> str:
+def format_source_reference(metadata: Dict[str, any], include_score: bool = False) -> str:
     """
     Format source reference from metadata.
-    
-    Args:
-        metadata: Metadata dictionary
-        
-    Returns:
-        Formatted source reference string
     """
     source = metadata.get("source", "Unknown source")
     page = metadata.get("page", "Unknown page")
-    
     reference = f"Source: {source}, Page: {page}"
+    if include_score and "score" in metadata:
+        reference += f" (Similarity Score: {metadata['score']})"
     return reference
